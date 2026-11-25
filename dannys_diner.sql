@@ -118,22 +118,23 @@ from (
     )t
 --这里的t就是一个临时表格，我想得到一个销售和菜单的大表
     group by customer_id;
+
+
 -- 6.成为会员之后，最先买的商品
-SELECT
+--第一步：先拿到每个顾客入会时间
+SELECT customer_id, join_date
+FROM members;
+第二步：查出入会之后所有订单，再取里面最早的订单日期
+SELECT s.customer_id, MIN(s.order_date) AS first_order_after_join
+FROM sales s
+JOIN members mb ON s.customer_id = mb.customer_id
+--入会时间会大于购买时间，所以需要where
+WHERE s.order_date >= mb.join_date
+GROUP BY s.customer_id;
+
 
 -- 7.成为会员之前，最后一次购买的商品
-SELECT customer_id, product_name
-FROM (
-    SELECT
-        s.customer_id,
-        m.product_name,
-        ROW_NUMBER() OVER (PARTITION BY s.customer_id ORDER BY s.order_date DESC) AS rn
-    FROM sales s
-    JOIN members mb ON s.customer_id = mb.customer_id
-    JOIN menu m ON s.product_id = m.product_id
-    WHERE s.order_date < mb.join_date
-) t
-WHERE rn = 1;
+SELECT 
 
 -- 8.入会之前，购买总数 + 总花费
 SELECT

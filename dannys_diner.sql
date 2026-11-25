@@ -25,12 +25,21 @@ join on就是其中的语法，并且join on 还是临时表格，不会保存�
 
 4.菜单上购买次数最多的菜品是什么？所有顾客购买了多少次？
 把销售表和菜单表连起来，拿到菜品名字；按菜品分组，统计购买次数；次数从高到低排序，取第一条，就是购买最多的菜品
-问题一：
+问题一：JOIN：订单表和菜单表连起来，拿到菜品名字
+GROUP BY product_name：按菜品分组
+count(sales.product_id)：统计这个菜品一共被下单多少次
+ORDER BY ... DESC：从多到少排序
+LIMIT 1：只取第一名 → 全店卖得最多的一道菜
 
-问题二：
+问题二：GROUP BY customer_id：按顾客分组
+count(*)：统计这个顾客一共有多少条下单记录（买了多少份东西，不是到访天数）
+结果：每个顾客的总购买份数
 
 5.哪款商品最受每位顾客欢迎？
+答：第一步：先查每个顾客、每道菜买了多少次；第二步：单独查出每个顾客的最大购买次数
+
 6.成为会员后，客户最先购买的是哪一项商品？
+答：
 7.在客户成为会员之前刚购买的商品是哪一项？
 8.每位会员在成为会员之前，总计的物品和花费金额是多少？
 9.如果每花1美元相当于10积分，而寿司有2倍积分倍数—那每位顾客会有多少积分？
@@ -87,38 +96,30 @@ JOIN menu ON sales.product_id = menu.product_id
 GROUP BY menu.product_name
 ORDER BY total_count DESC
 LIMIT 1;
+
 SELECT
     s.customer_id,count(*) as buy_times
 from sales s
 group by s.customer_id; 
 
 -- 5.每位顾客最喜欢（购买最多）的菜品
-SELECT customer_id, product_name, buy_count
-FROM (
-    SELECT
-        s.customer_id,
-        m.product_name,
-        COUNT(*) AS buy_count,
-        RANK() OVER (PARTITION BY s.customer_id ORDER BY COUNT(*) DESC) AS rk
-    FROM sales s
-    JOIN menu m ON s.product_id = m.product_id
-    GROUP BY s.customer_id, m.product_name
-) t
-WHERE rk = 1;
-
+--第一步：先查每个顾客、每道菜买了多少次
+SELECT customer_id, product_name, count(*) AS buy_customer
+FROM sales s
+JOIN menu m ON s.product_id = m.product_id
+GROUP BY s.customer_id, m.product_name;
+--第二步：单独查出每个顾客的最大购买次数
+SELECT customer_id,max(buy_cnt) as max_cnt
+from (
+    select customer_id,product_name,count(*) as buy_cnt
+    from sales
+    join menu on sales.product_id=menu.product_id
+    group by sales.customer_id,menu.product_name
+    )t
+--这里的t就是一个临时表格，我想得到一个销售和菜单的大表
+    group by customer_id;
 -- 6.成为会员之后，最先买的商品
-SELECT customer_id, product_name
-FROM (
-    SELECT
-        s.customer_id,
-        m.product_name,
-        ROW_NUMBER() OVER (PARTITION BY s.customer_id ORDER BY s.order_date ASC) AS rn
-    FROM sales s
-    JOIN members mb ON s.customer_id = mb.customer_id
-    JOIN menu m ON s.product_id = m.product_id
-    WHERE s.order_date >= mb.join_date
-) t
-WHERE rn = 1;
+SELECT
 
 -- 7.成为会员之前，最后一次购买的商品
 SELECT customer_id, product_name

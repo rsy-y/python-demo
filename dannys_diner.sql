@@ -134,18 +134,32 @@ GROUP BY s.customer_id;
 
 
 -- 7.成为会员之前，最后一次购买的商品
-SELECT 
+--第一步：先拿到每个顾客入会时间
+SELECT customer_id, join_date
+FROM members;
+--第二步：插入会之前的所有订单，再取里面最晚的订单日期
+SELECT s.customer_id, MIN(s.order_date) AS first_order_after_join
+FROM sales s
+JOIN members mb ON s.customer_id = mb.customer_id
+where s.order_date < mb.join_date
+GROUP BY s.customer_id;
 
--- 8.入会之前，购买总数 + 总花费
+
+-- 8.入会之前，购买物品的总数 + 总花费
+--第一步：先拿到每个顾客入会时间
+SELECT customer_id, join_date
+FROM members;
+--第二步：把入会之前的订单加入购买总数 + 总花费
 SELECT
     s.customer_id,
-    COUNT(*) AS total_item,
-    SUM(m.price) AS total_money
+    COUNT(*) AS total_items,
+    SUM(m.price) AS total_spent
 FROM sales s
 JOIN members mb ON s.customer_id = mb.customer_id
 JOIN menu m ON s.product_id = m.product_id
 WHERE s.order_date < mb.join_date
 GROUP BY s.customer_id;
+
 
 -- 9.积分：1美元=10分，寿司双倍
 SELECT
